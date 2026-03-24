@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Generic camera on adaptive icon safe zone -->
+    <group
+        android:translateX="54"
+        android:translateY="54">
+        <!-- Body -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-28,-6 L-20,-14 L20,-14 L28,-6 L32,-6 Q36,-6 36,-2 L36,20 Q36,24 32,24 L-32,24 Q-36,24 -36,20 L-36,-2 Q-36,-6 -32,-6 Z" />
+        <!-- Viewfinder bump -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-10,-14 L-6,-20 L6,-20 L10,-14 Z" />
+        <!-- Lens (outer ring = white donut via even-odd: use two circles - simpler: filled rings) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M16,4 A16,16 0 1,1 -16,4 A16,16 0 1,1 16,4" />
+        <path
+            android:fillColor="#6C63FF"
+            android:pathData="M10,4 A10,10 0 1,1 -10,4 A10,10 0 1,1 10,4" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M5,4 A5,5 0 1,1 -5,4 A5,5 0 1,1 5,4" />
+    </group>
+</vector>
