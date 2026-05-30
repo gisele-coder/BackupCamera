@@ -13,6 +13,9 @@ import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.ProgressBar
+import android.provider.Settings
+import android.net.Uri
+import android.os.Environment
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -129,6 +132,8 @@ class MainActivity : AppCompatActivity() {
     private fun iniciarBackup() {
         if (backupEmAndamento) return
 
+        if (!verificarPermissoesEspecial()) return
+
         // Verifica permissões
         val permissoes = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -150,7 +155,6 @@ class MainActivity : AppCompatActivity() {
         backupConcluido   = false
         btnBackup.isEnabled = false
         btnBackup.text = "⏳  BACKUP EM ANDAMENTO..."
-        btnLimpar.visibility = android.view.View.GONE
         tvLog.text = ""
         tvStatus.text = "Conectando ao PC..."
         resetarContadores()
@@ -196,7 +200,6 @@ class MainActivity : AppCompatActivity() {
         tvEta.text = ""
 
         if (erros == 0) {
-            btnLimpar.visibility = android.view.View.VISIBLE
             adicionarLog("✅ Backup concluído! $copiados copiados, $ignorados já existiam.")
         } else {
             adicionarLog("⚠️ Backup com $erros erros. Rode novamente antes de limpar.")
@@ -212,6 +215,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmarLimpeza() {
+        if (!verificarPermissoesEspecial()) return
+
         AlertDialog.Builder(this)
             .setTitle("⚠️ Limpar DCIM do celular?")
             .setMessage("Isso vai apagar PERMANENTEMENTE todos os arquivos da pasta DCIM do celular.\n\nTem certeza que o backup foi feito corretamente?")
@@ -223,12 +228,40 @@ class MainActivity : AppCompatActivity() {
     private fun executarLimpeza() {
         adicionarLog("🗑 Iniciando limpeza da DCIM...")
         tvStatus.text = "Limpando DCIM..."
-        btnLimpar.isEnabled = false
 
         val intent = Intent(this, BackupService::class.java).apply {
             action = BackupService.ACTION_LIMPAR
         }
-        startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    private fun verificarPermissoesEspecial(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Permissão Necessária")
+                    .setMessage("Para apagar arquivos da pasta DCIM, o App precisa da permissão 'Acesso a todos os arquivos'.\n\nDeseja configurar agora?")
+                    .setPositiveButton("Configurar") { _, _ ->
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.addCategory("android.intent.category.DEFAULT")
+                            intent.data = Uri.parse("package:${packageName}")
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton("Agora não", null)
+                    .show()
+                return false
+            }
+        }
+        return true
     }
 
     private fun resetarContadores() {

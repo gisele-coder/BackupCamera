@@ -70,10 +70,10 @@ class BackupService : Service() {
             val out = DataOutputStream(socket.getOutputStream())
             enviarLog("✅ Conectado ao PC!")
 
-            // Lista arquivos DCIM
+            // Lista arquivos DCIM (ignorando arquivos ocultos e lixeira .trashed)
             val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
             val arquivos = dcim.walkTopDown()
-                .filter { it.isFile }
+                .filter { it.isFile && !it.name.contains(".trashed") && !it.name.startsWith(".") }
                 .toList()
 
             val total = arquivos.size
@@ -171,24 +171,54 @@ class BackupService : Service() {
     // ----------------------------------------------------------------
     private suspend fun executarLimpeza() {
         try {
+            enviarLog("🔍 Escaneando pasta DCIM para limpeza...")
             val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            
+            if (!dcim.exists()) {
+                enviarLog("⚠️ Pasta DCIM não encontrada.")
+                return
+            }
+
+            val arquivos = dcim.walkTopDown()
+                .filter { it.isFile }
+                .toList()
+            
+            val total = arquivos.size
             var apagados = 0
             var falhas = 0
 
-            dcim.walkTopDown()
-                .filter { it.isFile }
-                .forEach { arquivo ->
-                    if (arquivo.delete()) apagados++ else falhas++
+            enviarLog("🗑 Apagando $total arquivos...")
+
+            arquivos.forEachIndexed { index, arquivo ->
+                try {
+                    if (arquivo.delete()) {
+                        apagados++
+                    } else {
+                        falhas++
+                    }
+                } catch (e: Exception) {
+                    falhas++
                 }
+                
+                if ((index + 1) % 50 == 0 || index + 1 == total) {
+                    enviarLog("Progresso: ${index + 1}/$total...")
+                }
+            }
 
             // Remove pastas vazias
             dcim.walkBottomUp()
-                .filter { it.isDirectory && it != dcim && it.list().isNullOrEmpty() }
+                .filter { it.isDirectory && it != dcim }
                 .forEach { it.delete() }
 
-            enviarLog("✅ Limpeza concluída! $apagados arquivos apagados, $falhas falhas.")
+            enviarLog("✅ Limpeza concluída!")
+            enviarLog("📊 Resultado: $apagados apagados, $falhas falhas.")
+            
+            if (falhas > 0) {
+                enviarLog("💡 Nota: Alguns arquivos podem estar protegidos pelo sistema Android.")
+            }
+            
         } catch (e: Exception) {
-            enviarLog("❌ Erro na limpeza: ${e.message}")
+            enviarLog("❌ Erro fatal na limpeza: ${e.message}")
         } finally {
             stopSelf()
         }

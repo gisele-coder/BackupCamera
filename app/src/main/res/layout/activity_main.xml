@@ -272,7 +272,7 @@
         android:backgroundTint="#6C63FF"
         android:stateListAnimator="@null" />
 
-    <!-- Botão limpar celular (visível só no final) -->
+    <!-- Botão limpar celular -->
     <Button
         android:id="@+id/btnLimpar"
         android:layout_width="match_parent"
@@ -283,7 +283,6 @@
         android:textColor="#FFFFFF"
         android:backgroundTint="#F44336"
         android:stateListAnimator="@null"
-        android:layout_marginTop="8dp"
-        android:visibility="gone" />
+        android:layout_marginTop="8dp" />
 
 </LinearLayout>
