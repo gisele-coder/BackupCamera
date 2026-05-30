@@ -1,24 +1,24 @@
 package com.backup.android
 
-import android.Manifest
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.view.View
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.ProgressBar
-import android.provider.Settings
-import android.net.Uri
-import android.os.Environment
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
+import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,10 +38,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvErros: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var scrollLog: ScrollView
+    private lateinit var bottomNavigation: BottomNavigationView
+    
+    private lateinit var tvIconHeader: TextView
+    private lateinit var tvTitleHeader: TextView
 
+    private var currentMode = BackupService.MODE_CAMERA
     private var backupEmAndamento = false
-    private var backupConcluido = false
-    private var totalErros = 0
 
     companion object {
         const val ACTION_UPDATE = "com.backup.android.UPDATE"
@@ -71,7 +74,6 @@ class MainActivity : AppCompatActivity() {
                     val ignorados = intent.getIntExtra(EXTRA_IGNORADOS, 0)
                     val erros = intent.getIntExtra(EXTRA_ERROS, 0)
                     val eta = intent.getStringExtra(EXTRA_ETA) ?: ""
-                    totalErros = erros
                     atualizarProgresso(progresso, total, atual, copiados, ignorados, erros, eta)
                 }
                 TIPO_LOG -> {
@@ -82,7 +84,6 @@ class MainActivity : AppCompatActivity() {
                     val copiados = intent.getIntExtra(EXTRA_COPIADOS, 0)
                     val ignorados = intent.getIntExtra(EXTRA_IGNORADOS, 0)
                     val erros = intent.getIntExtra(EXTRA_ERROS, 0)
-                    totalErros = erros
                     onBackupConcluido(copiados, ignorados, erros)
                 }
                 TIPO_ERRO -> {
@@ -97,31 +98,81 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        btnBackup     = findViewById(R.id.btnBackup)
-        btnLimpar     = findViewById(R.id.btnLimpar)
-        tvStatus      = findViewById(R.id.tvStatus)
-        tvPercent     = findViewById(R.id.tvPercent)
+        // Binding UI
+        btnBackup      = findViewById(R.id.btnBackup)
+        btnLimpar      = findViewById(R.id.btnLimpar)
+        tvStatus       = findViewById(R.id.tvStatus)
+        tvPercent      = findViewById(R.id.tvPercent)
         tvArquivoAtual = findViewById(R.id.tvArquivoAtual)
-        tvContador    = findViewById(R.id.tvContador)
-        tvEta         = findViewById(R.id.tvEta)
-        tvLog         = findViewById(R.id.tvLog)
-        tvCopiados    = findViewById(R.id.tvCopiados)
-        tvIgnorados   = findViewById(R.id.tvIgnorados)
-        tvErros       = findViewById(R.id.tvErros)
-        progressBar   = findViewById(R.id.progressBar)
-        scrollLog     = findViewById(R.id.scrollLog)
+        tvContador     = findViewById(R.id.tvContador)
+        tvEta          = findViewById(R.id.tvEta)
+        tvLog          = findViewById(R.id.tvLog)
+        
+        val cvCopiados = findViewById<CardView>(R.id.statCopiados)
+        tvCopiados = cvCopiados.findViewById(R.id.tvValue)
+        cvCopiados.findViewById<TextView>(R.id.tvLabel).text = "Copiados"
+        tvCopiados.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
 
+        val cvIgnorados = findViewById<CardView>(R.id.statIgnorados)
+        tvIgnorados = cvIgnorados.findViewById(R.id.tvValue)
+        cvIgnorados.findViewById<TextView>(R.id.tvLabel).text = "Já existem"
+        tvIgnorados.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_light))
+
+        val cvErros = findViewById<CardView>(R.id.statErros)
+        tvErros = cvErros.findViewById(R.id.tvValue)
+        cvErros.findViewById<TextView>(R.id.tvLabel).text = "Erros"
+        tvErros.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
+
+        progressBar    = findViewById(R.id.progressBar)
+        scrollLog      = findViewById(R.id.scrollLog)
+        bottomNavigation = findViewById(R.id.bottomNavigation)
+        
+        tvIconHeader   = findViewById(R.id.tvIconHeader)
+        tvTitleHeader  = findViewById(R.id.tvTitleHeader)
+
+        // Listeners
         btnBackup.setOnClickListener { iniciarBackup() }
         btnLimpar.setOnClickListener { confirmarLimpeza() }
+        
+        bottomNavigation.setOnItemSelectedListener { item ->
+            if (backupEmAndamento) {
+                adicionarLog("⚠️ Backup em andamento. Aguarde terminar.")
+                return@setOnItemSelectedListener false
+            }
+            when (item.itemId) {
+                R.id.nav_camera -> switchMode(BackupService.MODE_CAMERA)
+                R.id.nav_others -> switchMode(BackupService.MODE_OTHERS)
+            }
+            true
+        }
 
         val filter = IntentFilter(ACTION_UPDATE)
-        // Android U+ exige flag explícita de exported state para receivers.
-        ContextCompat.registerReceiver(
-            this,
-            receiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            } else {
+                0
+            }
+            ContextCompat.registerReceiver(this, receiver, filter, flags)
+        } else {
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    private fun switchMode(mode: String) {
+        currentMode = mode
+        if (mode == BackupService.MODE_CAMERA) {
+            tvIconHeader.text = "📷"
+            tvTitleHeader.text = "Backup Câmera"
+            btnBackup.text = "▶  INICIAR BACKUP CÂMERA"
+        } else {
+            tvIconHeader.text = "📁"
+            tvTitleHeader.text = "Backup Outros"
+            btnBackup.text = "▶  INICIAR BACKUP OUTROS"
+        }
+        resetarContadores()
+        tvStatus.text = "Modo: ${tvTitleHeader.text}"
+        adicionarLog("🔄 Modo alterado para: ${tvTitleHeader.text}")
     }
 
     override fun onDestroy() {
@@ -131,35 +182,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun iniciarBackup() {
         if (backupEmAndamento) return
-
         if (!verificarPermissoesEspecial()) return
 
-        // Verifica permissões
-        val permissoes = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED)
-                permissoes.add(Manifest.permission.READ_MEDIA_IMAGES)
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED)
-                permissoes.add(Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-                permissoes.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-
-        if (permissoes.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, permissoes.toTypedArray(), 1001)
-            return
-        }
-
         backupEmAndamento = true
-        backupConcluido   = false
         btnBackup.isEnabled = false
-        btnBackup.text = "⏳  BACKUP EM ANDAMENTO..."
-        tvLog.text = ""
-        tvStatus.text = "Conectando ao PC..."
+        btnBackup.text = "⏳ PROCESSANDO..."
         resetarContadores()
 
-        val intent = Intent(this, BackupService::class.java)
+        val intent = Intent(this, BackupService::class.java).apply {
+            putExtra(BackupService.EXTRA_MODE, currentMode)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
@@ -167,70 +199,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun atualizarProgresso(
-        progresso: Int, total: Int, arquivo: String,
-        copiados: Int, ignorados: Int, erros: Int, eta: String
-    ) {
-        progressBar.progress = progresso
-        tvPercent.text = "$progresso%"
-        tvArquivoAtual.text = arquivo
-        tvContador.text = "$copiados/${total}"
-        tvCopiados.text = copiados.toString()
-        tvIgnorados.text = ignorados.toString()
-        tvErros.text = erros.toString()
-        if (eta.isNotEmpty()) tvEta.text = "⏱ ETA: $eta"
-        tvStatus.text = "Backup em andamento..."
-    }
-
-    private fun adicionarLog(mensagem: String) {
-        val hora = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        val linhaAtual = tvLog.text.toString()
-        tvLog.text = "$linhaAtual[$hora] $mensagem\n"
-        scrollLog.post { scrollLog.fullScroll(ScrollView.FOCUS_DOWN) }
-    }
-
-    private fun onBackupConcluido(copiados: Int, ignorados: Int, erros: Int) {
-        backupEmAndamento = false
-        backupConcluido = true
-        btnBackup.isEnabled = true
-        btnBackup.text = "🔄  FAZER BACKUP NOVAMENTE"
-        tvStatus.text = "✅ Backup concluído!"
-        tvPercent.text = "100%"
-        progressBar.progress = 100
-        tvEta.text = ""
-
-        if (erros == 0) {
-            adicionarLog("✅ Backup concluído! $copiados copiados, $ignorados já existiam.")
-        } else {
-            adicionarLog("⚠️ Backup com $erros erros. Rode novamente antes de limpar.")
-        }
-    }
-
-    private fun onErroGrave(mensagem: String) {
-        backupEmAndamento = false
-        btnBackup.isEnabled = true
-        btnBackup.text = "▶  TENTAR NOVAMENTE"
-        tvStatus.text = "❌ Erro: $mensagem"
-        adicionarLog("❌ ERRO: $mensagem")
-    }
-
     private fun confirmarLimpeza() {
         if (!verificarPermissoesEspecial()) return
 
+        val msg = if (currentMode == BackupService.MODE_CAMERA) 
+            "Isso vai apagar a pasta DCIM (Fotos da Câmera)." 
+        else 
+            "Isso vai apagar as pastas de WhatsApp, Telegram, Downloads, etc."
+
         AlertDialog.Builder(this)
-            .setTitle("⚠️ Limpar DCIM do celular?")
-            .setMessage("Isso vai apagar PERMANENTEMENTE todos os arquivos da pasta DCIM do celular.\n\nTem certeza que o backup foi feito corretamente?")
+            .setTitle("⚠️ Limpar arquivos?")
+            .setMessage("$msg\n\nTem certeza que o backup foi concluído?")
             .setPositiveButton("SIM, APAGAR") { _, _ -> executarLimpeza() }
             .setNegativeButton("Cancelar", null)
             .show()
     }
 
     private fun executarLimpeza() {
-        adicionarLog("🗑 Iniciando limpeza da DCIM...")
-        tvStatus.text = "Limpando DCIM..."
+        adicionarLog("🗑 Iniciando limpeza ($currentMode)...")
+        tvStatus.text = "Limpando $currentMode..."
+        backupEmAndamento = true
+        btnBackup.isEnabled = false
+        btnBackup.text = "⏳ LIMPANDO..."
+        resetarContadores()
 
         val intent = Intent(this, BackupService::class.java).apply {
             action = BackupService.ACTION_LIMPAR
+            putExtra(BackupService.EXTRA_MODE, currentMode)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -239,24 +234,58 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun atualizarProgresso(p: Int, t: Int, a: String, c: Int, i: Int, e: Int, eta: String) {
+        progressBar.progress = p
+        tvPercent.text = "$p%"
+        tvArquivoAtual.text = a
+        tvContador.text = "$c/$t"
+        
+        // Se estiver limpando, vamos mostrar como "Apagados" e "Falhas"
+        if (tvStatus.text.toString().contains("Limpando")) {
+            tvCopiados.text = c.toString() // Aqui representará apagados
+            tvErros.text = e.toString() // Aqui representará falhas
+        } else {
+            tvCopiados.text = c.toString()
+            tvIgnorados.text = i.toString()
+            tvErros.text = e.toString()
+        }
+
+        if (eta.isNotEmpty()) tvEta.text = "⏱ ETA: $eta"
+    }
+
+    private fun adicionarLog(m: String) {
+        val h = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        tvLog.append("[$h] $m\n")
+        scrollLog.post { scrollLog.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun onBackupConcluido(c: Int, i: Int, e: Int) {
+        backupEmAndamento = false
+        btnBackup.isEnabled = true
+        btnBackup.text = if (currentMode == BackupService.MODE_CAMERA) "▶  INICIAR BACKUP CÂMERA" else "▶  INICIAR BACKUP OUTROS"
+        tvStatus.text = "✅ Concluído!"
+        adicionarLog("✅ Finalizado: $c copiados, $i já existiam, $e erros.")
+    }
+
+    private fun onErroGrave(m: String) {
+        backupEmAndamento = false
+        btnBackup.isEnabled = true
+        btnBackup.text = if (currentMode == BackupService.MODE_CAMERA) "▶  INICIAR BACKUP CÂMERA" else "▶  INICIAR BACKUP OUTROS"
+        tvStatus.text = "❌ Erro: $m"
+        adicionarLog("❌ ERRO: $m")
+    }
+
     private fun verificarPermissoesEspecial(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 AlertDialog.Builder(this)
-                    .setTitle("Permissão Necessária")
-                    .setMessage("Para apagar arquivos da pasta DCIM, o App precisa da permissão 'Acesso a todos os arquivos'.\n\nDeseja configurar agora?")
+                    .setTitle("Permissão Especial")
+                    .setMessage("O App precisa de acesso total para fazer backup e limpeza de todas as pastas.")
                     .setPositiveButton("Configurar") { _, _ ->
-                        try {
-                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                            intent.addCategory("android.intent.category.DEFAULT")
-                            intent.data = Uri.parse("package:${packageName}")
-                            startActivity(intent)
-                        } catch (e: Exception) {
-                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                            startActivity(intent)
-                        }
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        intent.data = Uri.parse("package:$packageName")
+                        startActivity(intent)
                     }
-                    .setNegativeButton("Agora não", null)
                     .show()
                 return false
             }
@@ -268,21 +297,9 @@ class MainActivity : AppCompatActivity() {
         tvCopiados.text = "0"
         tvIgnorados.text = "0"
         tvErros.text = "0"
-        tvContador.text = "0/0"
         tvPercent.text = "0%"
         progressBar.progress = 0
         tvArquivoAtual.text = "—"
         tvEta.text = ""
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            iniciarBackup()
-        } else {
-            tvStatus.text = "❌ Permissão negada. Necessário para ler os arquivos."
-        }
     }
 }

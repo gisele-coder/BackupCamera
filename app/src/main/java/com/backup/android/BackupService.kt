@@ -24,6 +24,10 @@ class BackupService : Service() {
         const val PORT = 9999
         const val CHANNEL_ID = "backup_channel"
         const val NOTIF_ID = 1
+
+        const val EXTRA_MODE = "extra_mode"
+        const val MODE_CAMERA = "mode_camera"
+        const val MODE_OTHERS = "mode_others"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -37,9 +41,10 @@ class BackupService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_CAMERA
         when (intent?.action) {
-            ACTION_LIMPAR -> serviceScope.launch { executarLimpeza() }
-            else -> serviceScope.launch { executarBackup() }
+            ACTION_LIMPAR -> serviceScope.launch { executarLimpeza(mode) }
+            else -> serviceScope.launch { executarBackup(mode) }
         }
         return START_NOT_STICKY
     }
@@ -52,10 +57,32 @@ class BackupService : Service() {
     // ----------------------------------------------------------------
     // BACKUP
     // ----------------------------------------------------------------
-    private suspend fun executarBackup() {
+    private suspend fun executarBackup(mode: String) {
         try {
+            val pastasAlvo = if (mode == MODE_CAMERA) {
+                listOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM))
+            } else {
+                obterPastasOutros()
+            }
+
+            enviarLog("🔍 Escaneando arquivos ($mode)...")
+            
+            val arquivos = mutableListOf<File>()
+            pastasAlvo.forEach { pasta ->
+                if (pasta.exists()) {
+                    arquivos.addAll(pasta.walkTopDown()
+                        .filter { it.isFile && !it.name.contains(".trashed") && !it.name.startsWith(".") }
+                        .toList())
+                }
+            }
+
+            if (arquivos.isEmpty()) {
+                enviarLog("⚠️ Nenhum arquivo encontrado para backup.")
+                stopSelf()
+                return
+            }
+
             enviarLog("Conectando ao PC na porta $PORT...")
-            enviarLog("(Execute 'adb reverse tcp:$PORT tcp:$PORT' no PC)")
 
             val socket: Socket
             try {
@@ -69,12 +96,6 @@ class BackupService : Service() {
 
             val out = DataOutputStream(socket.getOutputStream())
             enviarLog("✅ Conectado ao PC!")
-
-            // Lista arquivos DCIM (ignorando arquivos ocultos e lixeira .trashed)
-            val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-            val arquivos = dcim.walkTopDown()
-                .filter { it.isFile && !it.name.contains(".trashed") && !it.name.startsWith(".") }
-                .toList()
 
             val total = arquivos.size
             enviarLog("📁 Total de arquivos: $total")
@@ -169,25 +190,31 @@ class BackupService : Service() {
     // ----------------------------------------------------------------
     // LIMPEZA
     // ----------------------------------------------------------------
-    private suspend fun executarLimpeza() {
+    private suspend fun executarLimpeza(mode: String) {
         try {
-            enviarLog("🔍 Escaneando pasta DCIM para limpeza...")
-            val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-            
-            if (!dcim.exists()) {
-                enviarLog("⚠️ Pasta DCIM não encontrada.")
-                return
+            val pastasAlvo = if (mode == MODE_CAMERA) {
+                listOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM))
+            } else {
+                obterPastasOutros()
             }
 
-            val arquivos = dcim.walkTopDown()
-                .filter { it.isFile }
-                .toList()
+            enviarLog("🔍 Escaneando arquivos para limpeza ($mode)...")
+            
+            val arquivos = mutableListOf<File>()
+            pastasAlvo.forEach { pasta ->
+                if (pasta.exists()) {
+                    arquivos.addAll(pasta.walkTopDown()
+                        .filter { it.isFile }
+                        .toList())
+                }
+            }
             
             val total = arquivos.size
             var apagados = 0
             var falhas = 0
 
             enviarLog("🗑 Apagando $total arquivos...")
+            val inicio = System.currentTimeMillis()
 
             arquivos.forEachIndexed { index, arquivo ->
                 try {
@@ -200,22 +227,27 @@ class BackupService : Service() {
                     falhas++
                 }
                 
-                if ((index + 1) % 50 == 0 || index + 1 == total) {
-                    enviarLog("Progresso: ${index + 1}/$total...")
+                // Atualiza progresso e ETA para limpeza também
+                if ((index + 1) % 10 == 0 || index + 1 == total) {
+                    enviarProgressoELog(
+                        index + 1, total, arquivo.name,
+                        apagados, 0, falhas, inicio,
+                        "LIMPANDO: ${arquivo.name}"
+                    )
                 }
             }
 
-            // Remove pastas vazias
-            dcim.walkBottomUp()
-                .filter { it.isDirectory && it != dcim }
-                .forEach { it.delete() }
+            // Remove pastas vazias (opcional)
+            pastasAlvo.forEach { pasta ->
+                if (pasta.exists()) {
+                    pasta.walkBottomUp()
+                        .filter { it.isDirectory && it != pasta }
+                        .forEach { it.delete() }
+                }
+            }
 
             enviarLog("✅ Limpeza concluída!")
             enviarLog("📊 Resultado: $apagados apagados, $falhas falhas.")
-            
-            if (falhas > 0) {
-                enviarLog("💡 Nota: Alguns arquivos podem estar protegidos pelo sistema Android.")
-            }
             
         } catch (e: Exception) {
             enviarLog("❌ Erro fatal na limpeza: ${e.message}")
@@ -224,12 +256,29 @@ class BackupService : Service() {
         }
     }
 
+    private fun obterPastasOutros(): List<File> {
+        val storage = Environment.getExternalStorageDirectory()
+        val paths = listOf(
+            "WhatsApp/Media",
+            "Android/media/com.whatsapp/WhatsApp/Media",
+            "Android/media/com.whatsapp.w4b/WhatsApp Business/Media",
+            "Telegram",
+            "Pictures/Instagram",
+            "Pictures/Telegram",
+            "Pictures/Facebook",
+            "Pictures/Twitter",
+            "Download",
+            "Movies/Instagram",
+            "Movies/Snapchat"
+        )
+        return paths.map { File(storage, it) }.filter { it.exists() }
+    }
+
     // ----------------------------------------------------------------
     // Helpers de broadcast
     // ----------------------------------------------------------------
     private fun enviarLog(msg: String) {
         sendBroadcast(Intent(MainActivity.ACTION_UPDATE).apply {
-            // Evita lint/segurança com receiver não-exportado no mesmo app.
             setPackage(packageName)
             putExtra(MainActivity.EXTRA_TIPO, MainActivity.TIPO_LOG)
             putExtra(MainActivity.EXTRA_MENSAGEM, msg)
@@ -238,7 +287,6 @@ class BackupService : Service() {
 
     private fun enviarErro(msg: String) {
         sendBroadcast(Intent(MainActivity.ACTION_UPDATE).apply {
-            // Evita lint/segurança com receiver não-exportado no mesmo app.
             setPackage(packageName)
             putExtra(MainActivity.EXTRA_TIPO, MainActivity.TIPO_ERRO)
             putExtra(MainActivity.EXTRA_MENSAGEM, msg)
@@ -247,7 +295,6 @@ class BackupService : Service() {
 
     private fun enviarConcluido(copiados: Int, ignorados: Int, erros: Int) {
         sendBroadcast(Intent(MainActivity.ACTION_UPDATE).apply {
-            // Evita lint/segurança com receiver não-exportado no mesmo app.
             setPackage(packageName)
             putExtra(MainActivity.EXTRA_TIPO, MainActivity.TIPO_CONCLUIDO)
             putExtra(MainActivity.EXTRA_COPIADOS, copiados)
@@ -269,7 +316,6 @@ class BackupService : Service() {
         } else "calculando..."
 
         sendBroadcast(Intent(MainActivity.ACTION_UPDATE).apply {
-            // Evita lint/segurança com receiver não-exportado no mesmo app.
             setPackage(packageName)
             putExtra(MainActivity.EXTRA_TIPO, MainActivity.TIPO_PROGRESSO)
             putExtra(MainActivity.EXTRA_PROGRESSO, progresso)
@@ -284,9 +330,6 @@ class BackupService : Service() {
         enviarLog(logMsg)
     }
 
-    // ----------------------------------------------------------------
-    // Notificação
-    // ----------------------------------------------------------------
     private fun criarCanalNotificacao() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = NotificationChannel(

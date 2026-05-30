@@ -1,288 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="#1A1A2E">
 
-    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/bottomNavigation"
         android:orientation="vertical"
-        android:gravity="center"
-        android:paddingTop="16dp"
-        android:paddingBottom="24dp">
+        android:padding="20dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📷"
-            android:textSize="48sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Backup Câmera"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:textColor="#E0E0FF"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Aguardando conexão com PC..."
-            android:textSize="13sp"
-            android:textColor="#8888AA"
-            android:layout_marginTop="4dp" />
-    </LinearLayout>
-
-    <!-- Card de progresso -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardBackgroundColor="#16213E"
-        app:cardElevation="4dp"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
-
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:gravity="center"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@id/tvIconHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📷"
+                android:textSize="40sp" />
+
+            <TextView
+                android:id="@id/tvTitleHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Backup Câmera"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#E0E0FF"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aguardando conexão com PC..."
+                android:textSize="12sp"
+                android:textColor="#8888AA" />
+        </LinearLayout>
+
+        <!-- Card de progresso -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardBackgroundColor="#16213E">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:orientation="vertical"
+                android:padding="16dp">
 
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Progresso"
-                    android:textColor="#8888AA"
-                    android:textSize="12sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.1" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvPercent"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0%"
-                    android:textColor="#6C63FF"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvLabelProgresso"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Progresso"
+                        android:textColor="#8888AA"
+                        android:textSize="11sp"
+                        android:textAllCaps="true" />
 
-            <ProgressBar
-                android:id="@+id/progressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="12dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="12dp"
-                android:progressDrawable="@drawable/progress_bar"
-                android:max="100"
-                android:progress="0" />
+                    <TextView
+                        android:id="@+id/tvPercent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textColor="#6C63FF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:progressDrawable="@drawable/progress_bar"
+                    android:max="100" />
 
                 <TextView
                     android:id="@+id/tvArquivoAtual"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:text="—"
                     android:textColor="#AAAACC"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:ellipsize="middle"
                     android:singleLine="true" />
 
                 <TextView
                     android:id="@+id/tvContador"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="0/0"
                     android:textColor="#6C63FF"
-                    android:textSize="12sp" />
-            </LinearLayout>
+                    android:textSize="11sp"
+                    android:gravity="end" />
 
-            <!-- ETA -->
-            <TextView
-                android:id="@+id/tvEta"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="#8888AA"
-                android:textSize="12sp"
-                android:layout_marginTop="4dp" />
+                <TextView
+                    android:id="@+id/tvEta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#8888AA"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Stats Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <include layout="@layout/item_stat" android:id="@id/statCopiados" />
+            <include layout="@layout/item_stat" android:id="@id/statIgnorados" />
+            <include layout="@layout/item_stat" android:id="@id/statErros" />
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
 
-    <!-- Card de estatísticas -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
-
-        <!-- Copiados -->
+        <!-- Log Area -->
         <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#16213E"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-            <LinearLayout
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardBackgroundColor="#16213E">
+            <ScrollView
+                android:id="@+id/scrollLog"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="16dp">
+                android:layout_height="match_parent"
+                android:padding="12dp">
                 <TextView
-                    android:id="@+id/tvCopiados"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tvLog"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="#4CAF50"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Copiados"
-                    android:textColor="#8888AA"
-                    android:textSize="11sp" />
-            </LinearLayout>
+                    android:textColor="#AAAACC"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </ScrollView>
         </androidx.cardview.widget.CardView>
 
-        <!-- Ignorados -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#16213E"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="16dp">
-                <TextView
-                    android:id="@+id/tvIgnorados"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="#FFC107"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Já existem"
-                    android:textColor="#8888AA"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        <!-- Buttons -->
+        <Button
+            android:id="@+id/btnBackup"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="▶  INICIAR BACKUP"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#6C63FF"
+            android:layout_marginBottom="8dp" />
 
-        <!-- Erros -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            app:cardCornerRadius="12dp"
-            app:cardBackgroundColor="#16213E"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="16dp">
-                <TextView
-                    android:id="@+id/tvErros"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="#F44336"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Erros"
-                    android:textColor="#8888AA"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        <Button
+            android:id="@+id/btnLimpar"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🗑  LIMPAR CELULAR"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#F44336" />
     </LinearLayout>
 
-    <!-- Log -->
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@id/bottomNavigation"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardBackgroundColor="#16213E"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="#16213E"
+        app:itemIconTint="#8888AA"
+        app:itemTextColor="#8888AA"
+        app:menu="@menu/bottom_nav_menu" />
 
-        <ScrollView
-            android:id="@+id/scrollLog"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="16dp">
-
-            <TextView
-                android:id="@+id/tvLog"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="#AAAACC"
-                android:textSize="11sp"
-                android:fontFamily="monospace" />
-        </ScrollView>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Botão principal -->
-    <Button
-        android:id="@+id/btnBackup"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="▶  INICIAR BACKUP"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#6C63FF"
-        android:stateListAnimator="@null" />
-
-    <!-- Botão limpar celular -->
-    <Button
-        android:id="@+id/btnLimpar"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="🗑  LIMPAR DCIM DO CELULAR"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#F44336"
-        android:stateListAnimator="@null"
-        android:layout_marginTop="8dp" />
-
-</LinearLayout>
+</RelativeLayout>
