@@ -7,12 +7,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.ProgressBar
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -39,6 +44,8 @@ class MainActivity : AppCompatActivity() {
     private var backupEmAndamento = false
     private var backupConcluido = false
     private var totalErros = 0
+
+    private lateinit var manageStorageLauncher: ActivityResultLauncher<Intent>
 
     companion object {
         const val ACTION_UPDATE = "com.backup.android.UPDATE"
@@ -111,6 +118,17 @@ class MainActivity : AppCompatActivity() {
         btnBackup.setOnClickListener { iniciarBackup() }
         btnLimpar.setOnClickListener { confirmarLimpeza() }
 
+        manageStorageLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                adicionarLog("✅ Permissão de acesso total aos arquivos concedida.")
+                confirmarLimpeza()
+            } else {
+                adicionarLog("❌ Permissão MANAGE_EXTERNAL_STORAGE não concedida.")
+            }
+        }
+
         val filter = IntentFilter(ACTION_UPDATE)
         // Android U+ exige flag explícita de exported state para receivers.
         ContextCompat.registerReceiver(
@@ -150,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         backupConcluido   = false
         btnBackup.isEnabled = false
         btnBackup.text = "⏳  BACKUP EM ANDAMENTO..."
-        btnLimpar.visibility = android.view.View.GONE
+        btnLimpar.isEnabled = false
         tvLog.text = ""
         tvStatus.text = "Conectando ao PC..."
         resetarContadores()
@@ -190,13 +208,13 @@ class MainActivity : AppCompatActivity() {
         backupConcluido = true
         btnBackup.isEnabled = true
         btnBackup.text = "🔄  FAZER BACKUP NOVAMENTE"
+        btnLimpar.isEnabled = true
         tvStatus.text = "✅ Backup concluído!"
         tvPercent.text = "100%"
         progressBar.progress = 100
         tvEta.text = ""
 
         if (erros == 0) {
-            btnLimpar.visibility = android.view.View.VISIBLE
             adicionarLog("✅ Backup concluído! $copiados copiados, $ignorados já existiam.")
         } else {
             adicionarLog("⚠️ Backup com $erros erros. Rode novamente antes de limpar.")
@@ -207,14 +225,34 @@ class MainActivity : AppCompatActivity() {
         backupEmAndamento = false
         btnBackup.isEnabled = true
         btnBackup.text = "▶  TENTAR NOVAMENTE"
+        btnLimpar.isEnabled = true
         tvStatus.text = "❌ Erro: $mensagem"
         adicionarLog("❌ ERRO: $mensagem")
     }
 
     private fun confirmarLimpeza() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            AlertDialog.Builder(this)
+                .setTitle("Permissão necessária")
+                .setMessage("Para apagar arquivos do DCIM é necessário acesso total aos arquivos.\n\nVocê será redirecionado para Configurações.")
+                .setPositiveButton("ABRIR CONFIGURAÇÕES") { _, _ ->
+                    try {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
+                        ).setData(Uri.parse("package:$packageName"))
+                        manageStorageLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        adicionarLog("❌ Não foi possível abrir Configurações: ${e.message}")
+                    }
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+            return
+        }
+
         AlertDialog.Builder(this)
             .setTitle("⚠️ Limpar DCIM do celular?")
-            .setMessage("Isso vai apagar PERMANENTEMENTE todos os arquivos da pasta DCIM do celular.\n\nTem certeza que o backup foi feito corretamente?")
+            .setMessage("Isso vai apagar PERMANENTEMENTE todos os arquivos da pasta DCIM do celular.\n\nTem certeza? Esta ação não pode ser desfeita.")
             .setPositiveButton("SIM, APAGAR") { _, _ -> executarLimpeza() }
             .setNegativeButton("Cancelar", null)
             .show()

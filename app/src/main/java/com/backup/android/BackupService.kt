@@ -74,6 +74,7 @@ class BackupService : Service() {
             val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
             val arquivos = dcim.walkTopDown()
                 .filter { it.isFile }
+                .filterNot { it.name.startsWith(".trashed") }
                 .toList()
 
             val total = arquivos.size
@@ -171,6 +172,11 @@ class BackupService : Service() {
     // ----------------------------------------------------------------
     private suspend fun executarLimpeza() {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                enviarLog("❌ Sem permissão MANAGE_EXTERNAL_STORAGE. Conceda em Configurações.")
+                return
+            }
+
             val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
             var apagados = 0
             var falhas = 0
@@ -178,7 +184,21 @@ class BackupService : Service() {
             dcim.walkTopDown()
                 .filter { it.isFile }
                 .forEach { arquivo ->
-                    if (arquivo.delete()) apagados++ else falhas++
+                    try {
+                        if (arquivo.delete()) {
+                            apagados++
+                        } else {
+                            falhas++
+                            if (falhas <= 10) {
+                                enviarLog("⚠️ Falha (delete=false): ${arquivo.absolutePath}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        falhas++
+                        if (falhas <= 10) {
+                            enviarLog("⚠️ Falha (${e.javaClass.simpleName}): ${arquivo.name} - ${e.message}")
+                        }
+                    }
                 }
 
             // Remove pastas vazias
