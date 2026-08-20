@@ -47,13 +47,31 @@ A comunicação acontece via **socket TCP tunelado pelo ADB**:
 [Celular] --USB--> [ADB tunnel] --TCP:9999--> [Servidor no PC]
 ```
 
+
 ### Passo a passo
 
 1. Conecte o celular via USB ao PC
 2. No PC, abra um terminal (PowerShell ou CMD) e execute:
+
+### Antes de usar (IMPORTANTE):
+
+1. **Conecte o celular** via USB com Depuração USB ativada.
+2. **Inicie o servidor no PC**:
+   No terminal do PC, navegue até a pasta do projeto e execute:
+   ```powershell
+   cd server
+   python server.py
+
    ```
+   *(O servidor deve mostrar: "Servidor aguardando conexão na porta 9999...")*
+   
+3. **Configure o túnel ADB**:
+4. 
+   Abra **outro** terminal no PC e execute:
+   ```powershell
    adb reverse tcp:9999 tcp:9999
    ```
+
 3. Inicie o servidor receptor no PC (ele ficará escutando na porta `9999`)
 4. Abra o app **Backup Câmera** no celular
 5. Toque em **▶ INICIAR BACKUP**
@@ -103,3 +121,14 @@ C:\Users\giselenet\Backup_Camera_Android\
 ```
 
 > O código do servidor **não faz parte deste repositório**. Apenas o cliente Android está incluído. O servidor deve estar em execução antes de iniciar o backup pelo app.
+
+4. **No Celular**: Abra o app e toque em **INICIAR BACKUP**.
+
+## Estrutura do Servidor
+
+O servidor foi criado em Python para ser simples e leve:
+- **Local:** `server/server.py`
+- **Porta:** 9999
+- **Pasta de destino:** `C:\Users\giselenet\Backup_Camera_Android\`
+
+##Fim

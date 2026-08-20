@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="statCopiados" type="id" />
+    <item name="statIgnorados" type="id" />
+    <item name="statErros" type="id" />
+    <item name="bottomNavigation" type="id" />
+    <item name="tvIconHeader" type="id" />
+    <item name="tvTitleHeader" type="id" />
+</resources>

@@ -3,3 +3,5 @@
 /app/.gradle/
 /app/build/
 /build/
+/.idea/
+/.artifacts/
