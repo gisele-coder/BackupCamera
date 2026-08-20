@@ -34,20 +34,28 @@ O app usa comunicação via **socket TCP tunelado pelo ADB**:
 [Celular] --USB--> [ADB tunnel] --TCP:9999--> [Servidor no PC]
 ```
 
-### Antes de usar:
+### Antes de usar (IMPORTANTE):
 
-1. Conecte o celular via USB
-2. No PC, execute no PowerShell/terminal:
+1. **Conecte o celular** via USB com Depuração USB ativada.
+2. **Inicie o servidor no PC**:
+   No terminal do PC, navegue até a pasta do projeto e execute:
+   ```powershell
+   cd server
+   python server.py
    ```
+   *(O servidor deve mostrar: "Servidor aguardando conexão na porta 9999...")*
+3. **Configure o túnel ADB**:
+   Abra **outro** terminal no PC e execute:
+   ```powershell
    adb reverse tcp:9999 tcp:9999
    ```
-3. Execute o servidor no PC (próximo passo: criar servidor Windows)
-4. Abra o app no celular e toque em INICIAR BACKUP
+4. **No Celular**: Abra o app e toque em **INICIAR BACKUP**.
 
-## Próximo passo
+## Estrutura do Servidor
 
-Criar o servidor Windows (C# ou Python) que:
-- Fica escutando na porta 9999
-- Recebe os arquivos do celular
-- Salva em C:\Users\giselenet\Backup_Camera_Android\
-- Mostra progresso em tempo real na tela do PC
+O servidor foi criado em Python para ser simples e leve:
+- **Local:** `server/server.py`
+- **Porta:** 9999
+- **Pasta de destino:** `C:\Users\giselenet\Backup_Camera_Android\`
+
+##Fim
