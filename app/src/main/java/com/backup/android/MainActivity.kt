@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +16,8 @@ import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.ProgressBar
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
@@ -45,6 +48,8 @@ class MainActivity : AppCompatActivity() {
 
     private var currentMode = BackupService.MODE_CAMERA
     private var backupEmAndamento = false
+
+    private lateinit var manageStorageLauncher: ActivityResultLauncher<Intent>
 
     companion object {
         const val ACTION_UPDATE = "com.backup.android.UPDATE"
@@ -146,6 +151,17 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
+        manageStorageLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                adicionarLog("✅ Permissão de acesso total aos arquivos concedida.")
+                confirmarLimpeza()
+            } else {
+                adicionarLog("❌ Permissão MANAGE_EXTERNAL_STORAGE não concedida.")
+            }
+        }
+
         val filter = IntentFilter(ACTION_UPDATE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -220,6 +236,11 @@ class MainActivity : AppCompatActivity() {
         tvStatus.text = "Limpando $currentMode..."
         backupEmAndamento = true
         btnBackup.isEnabled = false
+
+        btnBackup.text = "⏳  BACKUP EM ANDAMENTO..."
+        btnLimpar.isEnabled = false
+        tvLog.text = ""
+        tvStatus.text = "Conectando ao PC..."
         btnBackup.text = "⏳ LIMPANDO..."
         resetarContadores()
 
@@ -262,6 +283,18 @@ class MainActivity : AppCompatActivity() {
     private fun onBackupConcluido(c: Int, i: Int, e: Int) {
         backupEmAndamento = false
         btnBackup.isEnabled = true
+        btnBackup.text = "🔄  FAZER BACKUP NOVAMENTE"
+        btnLimpar.isEnabled = true
+        tvStatus.text = "✅ Backup concluído!"
+        tvPercent.text = "100%"
+        progressBar.progress = 100
+        tvEta.text = ""
+
+        if (erros == 0) {
+            adicionarLog("✅ Backup concluído! $copiados copiados, $ignorados já existiam.")
+        } else {
+            adicionarLog("⚠️ Backup com $erros erros. Rode novamente antes de limpar.")
+        }
         btnBackup.text = if (currentMode == BackupService.MODE_CAMERA) "▶  INICIAR BACKUP CÂMERA" else "▶  INICIAR BACKUP OUTROS"
         tvStatus.text = "✅ Concluído!"
         adicionarLog("✅ Finalizado: $c copiados, $i já existiam, $e erros.")
@@ -270,9 +303,43 @@ class MainActivity : AppCompatActivity() {
     private fun onErroGrave(m: String) {
         backupEmAndamento = false
         btnBackup.isEnabled = true
+        btnBackup.text = "▶  TENTAR NOVAMENTE"
+        btnLimpar.isEnabled = true
+        tvStatus.text = "❌ Erro: $mensagem"
+        adicionarLog("❌ ERRO: $mensagem")
+    }
+
+    private fun confirmarLimpeza() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            AlertDialog.Builder(this)
+                .setTitle("Permissão necessária")
+                .setMessage("Para apagar arquivos do DCIM é necessário acesso total aos arquivos.\n\nVocê será redirecionado para Configurações.")
+                .setPositiveButton("ABRIR CONFIGURAÇÕES") { _, _ ->
+                    try {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
+                        ).setData(Uri.parse("package:$packageName"))
+                        manageStorageLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        adicionarLog("❌ Não foi possível abrir Configurações: ${e.message}")
+                    }
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("⚠️ Limpar DCIM do celular?")
+            .setMessage("Isso vai apagar PERMANENTEMENTE todos os arquivos da pasta DCIM do celular.\n\nTem certeza? Esta ação não pode ser desfeita.")
+            .setPositiveButton("SIM, APAGAR") { _, _ -> executarLimpeza() }
+            .setNegativeButton("Cancelar", null)
+            .show()
+
         btnBackup.text = if (currentMode == BackupService.MODE_CAMERA) "▶  INICIAR BACKUP CÂMERA" else "▶  INICIAR BACKUP OUTROS"
         tvStatus.text = "❌ Erro: $m"
         adicionarLog("❌ ERRO: $m")
+
     }
 
     private fun verificarPermissoesEspecial(): Boolean {

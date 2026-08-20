@@ -180,6 +180,20 @@
             android:backgroundTint="#F44336" />
     </LinearLayout>
 
+
+    <!-- Botão limpar celular (sempre visível) -->
+    <Button
+        android:id="@+id/btnLimpar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="🗑  LIMPAR DCIM DO CELULAR"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#F44336"
+        android:stateListAnimator="@null"
+        android:layout_marginTop="8dp" />
+
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@id/bottomNavigation"
         android:layout_width="match_parent"
@@ -189,5 +203,6 @@
         app:itemIconTint="#8888AA"
         app:itemTextColor="#8888AA"
         app:menu="@menu/bottom_nav_menu" />
+
 
 </RelativeLayout>
